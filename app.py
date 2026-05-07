@@ -26,7 +26,7 @@ from flask_cors import CORS
 app = Flask(__name__, template_folder=".")
 CORS(app)
 
-MODEL_DIR = "models"
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 FEATURES  = [
     "avg_speed_kph",
     "tire_type",
