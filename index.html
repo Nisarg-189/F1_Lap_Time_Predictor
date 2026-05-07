@@ -973,21 +973,44 @@
   async function loadMetrics() {
     try {
       const res  = await fetch(`${API}/metrics`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.warn('Metrics endpoint returned', res.status);
+        ['rf-mae','rf-rmse','rf-r2'].forEach(id => document.getElementById(id).textContent = 'N/A');
+        return;
+      }
       const data = await res.json();
       const rf   = data.random_forest;
+      if (!rf || rf.mae === undefined) {
+        console.warn('metrics.json missing random_forest keys. Got:', data);
+        ['rf-mae','rf-rmse','rf-r2'].forEach(id => document.getElementById(id).textContent = 'ERR');
+        return;
+      }
       document.getElementById('rf-mae').textContent  = rf.mae  + 's';
       document.getElementById('rf-rmse').textContent = rf.rmse + 's';
       document.getElementById('rf-r2').textContent   = rf.r2;
-    } catch (_) {}
+    } catch (e) {
+      console.error('loadMetrics failed:', e);
+      ['rf-mae','rf-rmse','rf-r2'].forEach(id => document.getElementById(id).textContent = 'ERR');
+    }
   }
 
   // ── Load feature importance on boot ──────────────────────────────────
   async function loadImportance() {
     try {
       const res  = await fetch(`${API}/feature-importance`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        document.getElementById('featRows').innerHTML =
+          '<div style="color:var(--red);font-family:\'Share Tech Mono\',monospace;font-size:0.7rem;text-align:center;padding:12px 0">⚠ Run train_model.py first</div>';
+        return;
+      }
       const data = await res.json();
+
+      // Guard: data must be a flat key→number dict
+      if (!data || typeof data !== 'object' || data.error) {
+        document.getElementById('featRows').innerHTML =
+          '<div style="color:var(--red);font-family:\'Share Tech Mono\',monospace;font-size:0.7rem;text-align:center;padding:12px 0">⚠ feature_importance.json malformed</div>';
+        return;
+      }
 
       const maxVal = Math.max(...Object.values(data));
       const rows   = document.getElementById('featRows');
@@ -1015,10 +1038,12 @@
         });
       }, 100);
 
-    } catch (_) {}
+    } catch (e) {
+      console.error('loadImportance failed:', e);
+      document.getElementById('featRows').innerHTML =
+        '<div style="color:var(--red);font-family:\'Share Tech Mono\',monospace;font-size:0.7rem;text-align:center;padding:12px 0">⚠ Could not load importances</div>';
+    }
   }
-
-  // ── Init ──────────────────────────────────────────────────────────────
   loadMetrics();
   loadImportance();
 </script>
